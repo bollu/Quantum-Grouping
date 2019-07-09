@@ -52,7 +52,8 @@ for nd in dag.topological_nodes():
     inDegree = len(list(dag.predecessors(nd)))
     successorList = list(dag.successors(nd)).copy()
     predecessorList = list(dag.predecessors(nd)).copy()
-    tempList = [nd, inDegree, counter, nd.qargs, successorList, predecessorList]
+    nodeType = nd.type
+    tempList = [nd, inDegree, counter, nd.qargs, successorList, predecessorList, nodeType]
     # update inDegreeList
     copyList = inDegreeList[inDegree]
     copyList.append(tempList)
@@ -89,7 +90,8 @@ for ls in inDegreeList:
         print("predecessors: ", end = " ")
         for pred in sls[5]:
             print(pred.name + " " + str(pred._node_id), end = " ")
-        print("position is: " + str(iterator))
+        print("position is: " + str(iterator), end = " ")
+        print (sls[6])
         iterator += 1
     counter += 1
 
@@ -104,7 +106,7 @@ print("******************************************")
 # stores the list of node obj with incoming degree 0
 zeroList = inDegreeList[0]
 
-# zeroList contains node(new_node) that has [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes)]
+# zeroList contains node(new_node) that has [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
 iterator = 0
 while iterator < 98:
     print("zeroList's size is: ", end = " ")
@@ -237,5 +239,138 @@ while iterator < 98:
     print()
     iterator += 1  
 
-
 print(groupResult)
+
+# eliminate non-op gates
+
+newGroupResult = []
+
+for group in groupResult:
+    newGroup = []
+    for dagID in group:
+        if dagList[dagID][6] == 'op':
+            newGroup.append(dagID)
+    if len(newGroup) > 0:
+        newGroupResult.append(newGroup)
+
+print(newGroupResult)
+
+# partition groups
+
+id_depth_dict = {} # stores dagID->depth
+
+# node(new_node) that has 
+# [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
+
+it = 0
+for group in newGroupResult:
+    print(it, end = ': ')
+    first_dag_id = group[0]
+    id_depth_dict[first_dag_id] = 1
+    iterator = 1
+    while iterator < len(group):
+        print(iterator, end = ' ')
+        dag_id = group[iterator]
+        node = dagList[dag_id]
+        pred_list = node[5] 
+        deepest_depth = 1
+        # add restriction to pred to only op, also to already detected
+        for pred in pred_list:
+            if (pred.type != 'op'):
+                continue
+            pred_node_id = pred._node_id
+            pred_dag_id = idDict[pred_node_id]
+            print('pred_dag_id is: ' + str(pred_dag_id), end = ' ')
+            if pred_dag_id not in id_depth_dict:
+                continue
+            depth = id_depth_dict[pred_dag_id] + 1
+            if depth > deepest_depth:
+                deepest_depth = depth
+        id_depth_dict[dag_id] = deepest_depth
+        iterator += 1        
+    it += 1
+    print()
+print(id_depth_dict)
+
+finalGroupingResult = []
+
+# divide depth
+
+for group in newGroupResult:
+    iterator = 0
+    # while iterator < len(group):
+    depth_id_dict = {}
+    for dag_id in group:
+        depth = int((id_depth_dict[dag_id] + 1) / 2)
+        if depth in depth_id_dict:
+            depth_id_dict[depth].append(dag_id)
+        else:
+            new_list = []
+            new_list.append(dag_id)
+            depth_id_dict[depth] = new_list
+    layer = 1
+    while 1 == 1:
+        if layer in depth_id_dict:
+            list_copy = depth_id_dict[layer].copy()
+            finalGroupingResult.append(list_copy)
+        else:
+            break
+        layer += 1
+
+print(finalGroupingResult)    
+print(id_depth_dict)
+
+# the format of subgraph: list1: [[0:dag_id, 1:name, 2:[q1, q2]], []], list2: []
+
+# node(new_node) that has 
+# [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
+
+dist_table = []
+
+dist_table_dict = {}
+
+for group in finalGroupingResult:
+    # turn the group into a list
+    for dag_id in group:
+        list1 = []
+        list2 = []
+        temp_list = []
+        temp_list.append(dag_id)
+        temp_list.append(dagList[dag_id].name)
+        temp_list.append(dagList[dag_id].qargs)
+        if id_depth_dict[dag_id] % 2 == 1:
+            list1.append(temp_list.copy())
+        else:
+            list2.append(temp_list.copy())
+    result_list = []
+    result_list.append(list1)
+    result_list.append(list2)
+    # reformat 
+
+
+    # check whether result_list is in dist_table
+    iterator = 0
+    found = False
+    while iterator < len(dist_table):
+        to_continue = False
+        # check same:
+        if len(result_list) == len(dist_table[iterator]):
+            if (len(result_list[0]) == len(dist_table[iterator][0])) and (len(result_list[1]) == len(dist_table[iterator][1])):
+                it = 0
+                while it < len(result_list[0]):
+                    node1 = result_list[0][it]
+                    node2 = dist_table[iterator][0][it]
+                    name1 = node1[1]
+                    name2 = node2[1]
+                    qargs1 = node1[2]
+                    qargs2 = node2[2]
+                    if len(qargs1) == len(qargs2):
+                        if 
+                    else:
+                        to_continue = True
+                        break
+                    it += 1
+                if to_continue == True:
+                    continue
+        iterator += 1
+        
