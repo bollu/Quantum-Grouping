@@ -7,6 +7,10 @@ from qiskit.visualization import dag_visualization
 from qiskit.converters import circuit_to_dag
 import os
 from ctypes import c_int, addressof
+import networkx as nx
+import matplotlib.pyplot as plt
+from networkx.drawing.nx_pydot import write_dot
+import networkx.algorithms.isomorphism as iso
 os.environ["PATH"] += os.pathsep + \
     '/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-packages/graphviz'
 # IBMQ.load_accounts()
@@ -329,48 +333,126 @@ dist_table = []
 
 dist_table_dict = {}
 
+# turn the group into networkx graph
 for group in finalGroupingResult:
-    # turn the group into a list
+    if len(group) <= 1:
+        continue
+    # reassign qarg values
+    qarg_dict = {}
+    value_index = 10
     for dag_id in group:
-        list1 = []
-        list2 = []
-        temp_list = []
-        temp_list.append(dag_id)
-        temp_list.append(dagList[dag_id].name)
-        temp_list.append(dagList[dag_id].qargs)
-        if id_depth_dict[dag_id] % 2 == 1:
-            list1.append(temp_list.copy())
-        else:
-            list2.append(temp_list.copy())
-    result_list = []
-    result_list.append(list1)
-    result_list.append(list2)
-    # reformat 
-
-
-    # check whether result_list is in dist_table
-    iterator = 0
+        node = dagList[dag_id]
+        qargs = node[3]
+        for qarg in qargs:
+            if qarg[1] not in qarg_dict:
+                qarg_dict[qarg[1]] = value_index
+                value_index += 1 
+                
+    G = nx.Graph()
+    G.clear()
+    dumb_node = 'Z'
+    for dag_id in group:
+        if id_depth_dict[dag_id] % 2 == 1: # if on the first level
+            node = dagList[dag_id]
+            name = node[0].name
+            G.add_nodes_from([dag_id], fill=name)
+            qargs = node[3]
+            for qarg in qargs:
+                new_qarg = qarg_dict[qarg[1]]
+                G.add_nodes_from([dumb_node], fill='dumb')
+                G.add_weighted_edges_from([(dumb_node, dag_id, new_qarg)])
+                dumb_node = chr(ord(dumb_node) - 1)
+        else: # if on the second level:
+            node = dagList[dag_id]
+            name = node[0].name
+            G.add_nodes_from([dag_id], fill=name)
+            qargs = node[3]
+            pred_list = node[5]
+            index = 0
+            for qarg in qargs:
+                new_qarg = qarg_dict[qarg[1]]
+                pred = pred_list[index]
+                pred_node_id = pred._node_id
+                pred_dag_id = idDict[pred_node_id]
+                if pred_dag_id in group: # if in the group, connect them
+                    G.add_weighted_edges_from([(dag_id, pred_dag_id, new_qarg)])
+                else: # if not in the group connect it to a dumb_node
+                    G.add_nodes_from([dumb_node], fill='dumb')
+                    G.add_weighted_edges_from([(dumb_node, dag_id, new_qarg)]) 
+                    dumb_node = chr(ord(dumb_node) - 1)
+                index += 1 
+    # compare with known structures in table_list
+    em = iso.numerical_edge_match('weight', 10)
+    nm = iso.categorical_node_match('fill', 'dumb')
+    
+    index = 0
     found = False
-    while iterator < len(dist_table):
-        to_continue = False
-        # check same:
-        if len(result_list) == len(dist_table[iterator]):
-            if (len(result_list[0]) == len(dist_table[iterator][0])) and (len(result_list[1]) == len(dist_table[iterator][1])):
-                it = 0
-                while it < len(result_list[0]):
-                    node1 = result_list[0][it]
-                    node2 = dist_table[iterator][0][it]
-                    name1 = node1[1]
-                    name2 = node2[1]
-                    qargs1 = node1[2]
-                    qargs2 = node2[2]
-                    if len(qargs1) == len(qargs2):
-                        if 
-                    else:
-                        to_continue = True
-                        break
-                    it += 1
-                if to_continue == True:
-                    continue
-        iterator += 1
+    while index < len(dist_table):
+        H = dist_table[index]
+        if nx.is_isomorphic(G, H, node_match=nm, edge_match=em):
+            dist_table_dict[index] = dist_table_dict[index] + 1
+            found = True
+            break
+        index += 1
+    if not found: # add a new structure
+        dist_table.append(G)
+        pos = len(dist_table) - 1
+        dist_table_dict[pos] = 1
+
+iterator = 0
+while iterator < len(dist_table):
+    G = dist_table[iterator]
+    suffix = str(iterator)
+    file_name = '../structures/structure_' + suffix
+    nx.draw_networkx(G)
+    plt.savefig(file_name)
+    iterator += 1
+
+
+
+
+# for group in finalGroupingResult:
+#     # turn the group into a list
+#     for dag_id in group:
+#         list1 = []
+#         list2 = []
+#         temp_list = []
+#         temp_list.append(dag_id)
+#         temp_list.append(dagList[dag_id].name)
+#         temp_list.append(dagList[dag_id].qargs)
+#         if id_depth_dict[dag_id] % 2 == 1:
+#             list1.append(temp_list.copy())
+#         else:
+#             list2.append(temp_list.copy())
+#     result_list = []
+#     result_list.append(list1)
+#     result_list.append(list2)
+#     # reformat 
+
+
+#     # check whether result_list is in dist_table
+#     iterator = 0
+#     found = False
+#     while iterator < len(dist_table):
+#         to_continue = False
+#         # check same:
+#         if len(result_list) == len(dist_table[iterator]):
+#             if (len(result_list[0]) == len(dist_table[iterator][0])) and (len(result_list[1]) == len(dist_table[iterator][1])):
+#                 it = 0
+#                 while it < len(result_list[0]):
+#                     node1 = result_list[0][it]
+#                     node2 = dist_table[iterator][0][it]
+#                     name1 = node1[1]
+#                     name2 = node2[1]
+#                     qargs1 = node1[2]
+#                     qargs2 = node2[2]
+#                     if len(qargs1) == len(qargs2):
+#                         if 
+#                     else:
+#                         to_continue = True
+#                         break
+#                     it += 1
+#                 if to_continue == True:
+#                     continue
+#         iterator += 1
         
