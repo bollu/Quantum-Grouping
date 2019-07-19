@@ -13,13 +13,20 @@ from networkx.drawing.nx_pydot import write_dot
 import networkx.algorithms.isomorphism as iso
 os.environ["PATH"] += os.pathsep + \
     '/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-packages/graphviz'
-# IBMQ.load_accounts()
+IBMQ.load_account()
 dist_table = []
 
 dist_table_dict = {}
 
-ghz = QuantumCircuit.from_qasm_file("../examples/4gt12-v0_86.qasm")
+qasm_table = []
+
+ghz = QuantumCircuit.from_qasm_file("../examples/3_17_13.qasm")
+# device = IBMQ.get_backend('ibmq_16_melbourne')
+
+# trans_ghz = transpile(ghz, device)
+
 dag = circuit_to_dag(ghz)
+# dag = circuit_to_dag(ghz)
 
 def AccessNode(nodeId):
     counter = 1
@@ -114,7 +121,7 @@ zeroList = inDegreeList[0]
 
 # zeroList contains node(new_node) that has [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
 iterator = 0
-while iterator < len(dagList) - 10:
+while iterator < len(dagList) - 1:
     print("zeroList's size is: ", end = " ")
     print(len(zeroList), end = " ")  
 
@@ -247,6 +254,10 @@ while iterator < len(dagList) - 10:
 
 print(groupResult)
 
+
+
+
+
 # eliminate non-op gates
 
 newGroupResult = []
@@ -326,6 +337,18 @@ for group in newGroupResult:
 print(finalGroupingResult)    
 print(id_depth_dict)
 
+# dag_id to group index:
+id_group_index_dict = {}
+group_index = 0
+for group in finalGroupingResult:
+    for dag_id in group:
+        id_group_index_dict[dag_id] = group_index
+    group_index += 1
+
+print(id_group_index_dict)
+
+
+
 # the format of subgraph: list1: [[0:dag_id, 1:name, 2:[q1, q2]], []], list2: []
 
 # node(new_node) that has 
@@ -333,7 +356,7 @@ print(id_depth_dict)
 
 
 
-# turn the group into networkx graph
+# turn the group into networkx graph; also into qasm
 for group in finalGroupingResult:
     if len(group) <= 1:
         continue
@@ -351,7 +374,9 @@ for group in finalGroupingResult:
     G = nx.Graph()
     G.clear()
     dumb_node = 'Z'
+    qasm = ''
     for dag_id in group:
+        
         if id_depth_dict[dag_id] % 2 == 1: # if on the first level
             node = dagList[dag_id]
             name = node[0].name + '_' + str(dag_id)
@@ -371,7 +396,7 @@ for group in finalGroupingResult:
             index = 0
             for qarg in qargs:
                 new_qarg = qarg_dict[qarg[1]]
-                print("right until line 374 " + str(dag_id) + ' ' + str(index))
+                # print("right until line 374 " + str(dag_id) + ' ' + str(index))
                 if index >= len(pred_list):
                     continue
                 pred = pred_list[index]
@@ -420,6 +445,11 @@ while iterator < len(dist_table):
     iterator += 1
 
 print(dist_table_dict)
+
+# compute layers/depths of each group
+group_depth_dict = {}
+depth = 1
+
 
 
 # for group in finalGroupingResult:

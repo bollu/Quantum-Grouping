@@ -30,13 +30,17 @@ import os,sys
 #     else:
 #         print("THIS IS NOT QASM")
 
-ghz = QuantumCircuit.from_qasm_file("../examples/4gt12-v0_86.qasm")
+ghz = QuantumCircuit.from_qasm_file("../examples3/ex-1_166.qasm")
 dag = circuit_to_dag(ghz)
 # dag_drawer(dag, scale=1.0, filename = '../pic/alu-v2_31.png')
 
 counter = 0
 for nd in dag.topological_nodes():
-    nd.name = nd.name + " " + str(counter) + " " + str(nd._node_id)
+    print(counter)
+    if nd.type == 'op':
+        nd.name = nd.name + " " + str(counter) + " " + str(nd._node_id) + ' ' + str(nd.op)
+    else:
+        nd.name = nd.name + " " + str(counter) + " " + str(nd._node_id)
     counter += 1
     
-dag_drawer(dag, scale=0.7, filename = '../pic/4gt12-v0_86.png')
+dag_drawer(dag, scale=0.7, filename = '../pic/ex-1_166.png')
