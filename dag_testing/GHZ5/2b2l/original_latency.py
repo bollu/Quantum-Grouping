@@ -11,17 +11,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from networkx.drawing.nx_pydot import write_dot
 import networkx.algorithms.isomorphism as iso
-import xlrd  #引入模块
-
-workbook=xlrd.open_workbook("lat_2b2l_0.0.xlsx")  #文件路径
-
-worksheet=workbook.sheet_by_index(0)
-
-nrows=worksheet.nrows  #获取该表总行数
-print(nrows)  #32
-
-
-
 
 # IBMQ.load_account()
 dist_table = []
@@ -33,23 +22,20 @@ dist_file_dict = {}
 qasm_table = []
 
 latency_table = []
-# # only for testing
-# i = 0
-# while i < 800:
-#     latency_table.append(i)
-#     i += 1
+# only for testing
+i = 0
+while i < 800:
+    latency_table.append(i)
+    i += 1
 
-for i in range(nrows): #循环打印每一行
-    latency_table.append(worksheet.row_values(i)[2])  #以列表形式读出，列表中的每一项是str类型
-
-basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/examples2'
+basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/examples3'
 filename_list = os.listdir(basedir)
 for item in filename_list:
     path=os.path.join(basedir,item)
     file=os.path.splitext(item)
     filename,typen=file
     if typen == '.qasm':
-        parentPath = '../../examples2/'
+        parentPath = '../../examples3/'
         parentPath = parentPath + filename + typen
         print(parentPath)
 
@@ -61,7 +47,7 @@ for item in filename_list:
 
         dag = circuit_to_dag(ghz)
 
-        # dag_drawer(dag, scale=0.7, filename='../pic/alu-v2_31.png')
+        dag_drawer(dag, scale=0.7, filename='v3.png')
 
         idDict = {} # _node_id to dag_id(starting from 0)
 
@@ -545,3 +531,42 @@ for nd in dagList:
         max_latency_table[group_index] = max_latency_table[group_index]
     
 print(max_latency_table)
+
+
+# node(new_node) that has 
+# [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
+
+one_gate_latency_list = ['cx', 't', 'tdg', 'x', 'rz', 'h']
+
+one_gate_latency_dict = {}
+one_gate_latency_dict['cx'] = 5.78125
+one_gate_latency_dict['t'] = 4.21875
+one_gate_latency_dict['h'] = 3.90625
+one_gate_latency_dict['tdg'] = 3.90625
+one_gate_latency_dict['x'] = 3.90625
+one_gate_latency_dict['rz'] = 4.21875
+
+original_latency_table = []
+i = 0
+while i < 98:
+    original_latency_table.append(0)
+    i += 1
+
+for nd in dagList:
+    if nd[6] != 'op':
+        continue
+    dag_id = nd[2]
+    gate_name = nd[0].name  
+
+    max_latency = 0
+    pred_list = nd[5]
+    for pred in pred_list:
+        if pred.type != 'op':
+            continue
+        pred_node_id = pred._node_id
+        pred_dag_id = idDict[pred_node_id]
+        if original_latency_table[pred_dag_id] > max_latency:
+            max_latency = original_latency_table[pred_dag_id]              
+    original_latency_table[dag_id] = max_latency + one_gate_latency_dict[gate_name]
+
+print(original_latency_table)
