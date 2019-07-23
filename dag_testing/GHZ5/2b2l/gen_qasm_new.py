@@ -28,14 +28,14 @@ while i < 800:
     latency_table.append(i)
     i += 1
 
-basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/examples'
+basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/examples6'
 filename_list = os.listdir(basedir)
 for item in filename_list:
     path=os.path.join(basedir,item)
     file=os.path.splitext(item)
     filename,typen=file
     if typen == '.qasm':
-        parentPath = '../../examples/'
+        parentPath = '../../examples6/'
         parentPath = parentPath + filename + typen
         print(parentPath)
 
