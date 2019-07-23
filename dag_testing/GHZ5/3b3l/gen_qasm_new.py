@@ -477,7 +477,7 @@ for item in filename_list:
             dumb_node = 'Z'
             qasm = ''
             for dag_id in group:
-                if id_depth_dict[dag_id] % 2 == 1: # if on the first level
+                if id_depth_dict[dag_id] % 3 == 1: # if on the first level
                     node = dagList[dag_id]
                     name = node[0].name + '_' + str(dag_id)
                     gate_name = node[0].name # for qasm
