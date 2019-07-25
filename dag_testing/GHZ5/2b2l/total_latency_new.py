@@ -13,11 +13,13 @@ from networkx.drawing.nx_pydot import write_dot
 import networkx.algorithms.isomorphism as iso
 import xlrd  #引入模块
 
+temp = []
+
 all_results = []
 
 latency_table = []
 
-workbook=xlrd.open_workbook("../latency_list_original/qasm_list_22.xlsx")  #文件路径
+workbook=xlrd.open_workbook("../latency_list_original/qasm_list_24.csv.xlsx")  #文件路径
 worksheet=workbook.sheet_by_index(0)
 nrows=worksheet.nrows  #获取该表总行数
 for i in range(nrows): #循环打印每一行
@@ -41,14 +43,14 @@ dist_file_dict = {}
 
 qasm_table = []
 
-basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/examples6'
+basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/examples2'
 filename_list = os.listdir(basedir)
 for item in filename_list:
     path=os.path.join(basedir,item)
     file=os.path.splitext(item)
     filename,typen=file
     if typen == '.qasm':
-        parentPath = '../../examples6/'
+        parentPath = '../../examples2/'
         parentPath = parentPath + filename + typen
         print(parentPath)
 
@@ -201,6 +203,8 @@ for item in filename_list:
                     index += 1
             # print("correct until line 127", end = " ")
             if len(indexList) == 0:
+                # only if it is op!!!
+                # if node[0].type == 'op':
                 newList = []
                 newList.append(node[2])
                 groupResult.append(newList)
@@ -393,7 +397,7 @@ for item in filename_list:
                 sub_group = []
                 layer = 1
                 while 1 == 1:
-                    if layer > 2:
+                    if layer > 4:
                         break
                     if iter_depth > max_depth:
                         break
@@ -488,7 +492,7 @@ for item in filename_list:
             qasm = ''
             for dag_id in group: # # map each dag_id to group_index
                 
-                if id_depth_dict[dag_id] % 2 == 1: # if on the first level
+                if id_depth_dict[dag_id] % 4 == 1: # if on the first level
                     node = dagList[dag_id]
                     name = node[0].name + '_' + str(dag_id)
                     gate_name = node[0].name # for qasm
@@ -567,9 +571,6 @@ for item in filename_list:
                 # map group_index to dist_index
                 groupIndex_to_distIndex[group_index] = pos
 
-           
-
-
         # dag_id to group index:
         id_group_index_dict = {}
         group_index = 0
@@ -586,7 +587,7 @@ for item in filename_list:
 
         max_latency_table = [] # keep track of max_latency
         i = 0
-        while i < len(dagList) - 20:
+        while i < len(dagList):
             max_latency_table.append(0)
             i += 1
 
@@ -682,5 +683,13 @@ for item in filename_list:
 
 print(all_results)
 
+print(groupIndex_to_distIndex)
 
-
+# #one_gate_latency_list = ['cx', 't', 'tdg', 'x', 'rz', 'h']
+# one_gate_latency_dict = {}
+# one_gate_latency_dict['cx'] = 5.78125
+# one_gate_latency_dict['t'] = 4.21875
+# one_gate_latency_dict['h'] = 3.90625
+# one_gate_latency_dict['tdg'] = 3.90625
+# one_gate_latency_dict['x'] = 3.90625
+# one_gate_latency_dict['rz'] = 4.21875

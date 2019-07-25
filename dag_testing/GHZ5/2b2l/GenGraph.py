@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from networkx.drawing.nx_pydot import write_dot
 import networkx.algorithms.isomorphism as iso
 
-ghz = QuantumCircuit.from_qasm_file('../../examples2/ex1_226.qasm')
+ghz = QuantumCircuit.from_qasm_file('../../examples2/0410184_16049.qasm')
 dag = circuit_to_dag(ghz)
 
 counter = 0
@@ -20,4 +20,4 @@ for nd in dag.topological_nodes():
     nd.name = nd.name + ' ' + str(counter)
     counter += 1
 
-dag_drawer(dag, scale=0.7, filename='ex1_226.png')
+dag_drawer(dag, scale=0.7, filename='0410184_16049.png')
