@@ -11,6 +11,28 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from networkx.drawing.nx_pydot import write_dot
 import networkx.algorithms.isomorphism as iso
+import xlrd  #引入模块
+
+temp = []
+
+all_results = []
+
+latency_table = []
+
+# workbook=xlrd.open_workbook("../latency_list_mapped/qasm_list_24.csv.xlsx")  #文件路径
+# worksheet=workbook.sheet_by_index(0)
+# nrows=worksheet.nrows  #获取该表总行数
+# for i in range(nrows): #循环打印每一行
+#     latency_table.append(worksheet.row_values(i)[0])  #以列表形式读出，列表中的每一项是str类型
+
+one_gate_latency_list = ['cx', 't', 'tdg', 'x', 'rz', 'h']
+one_gate_latency_dict = {}
+one_gate_latency_dict['cx'] = 5.78125
+one_gate_latency_dict['t'] = 4.21875
+one_gate_latency_dict['h'] = 3.90625
+one_gate_latency_dict['tdg'] = 3.90625
+one_gate_latency_dict['x'] = 3.90625
+one_gate_latency_dict['rz'] = 4.21875
 
 # IBMQ.load_account()
 dist_table = []
@@ -21,21 +43,14 @@ dist_file_dict = {}
 
 qasm_table = []
 
-latency_table = []
-# only for testing
-i = 0
-while i < 800:
-    latency_table.append(i)
-    i += 1
-
-basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/mapped_qasm'
+basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/swapped_qasm'
 filename_list = os.listdir(basedir)
 for item in filename_list:
     path=os.path.join(basedir,item)
     file=os.path.splitext(item)
     filename,typen=file
     if typen == '.qasm':
-        parentPath = '../../mapped_qasm/'
+        parentPath = '../../swapped_qasm/'
         parentPath = parentPath + filename + typen
         print(parentPath)
 
@@ -47,7 +62,7 @@ for item in filename_list:
 
         dag = circuit_to_dag(ghz)
 
-        
+        # dag_drawer(dag, scale=0.7, filename='../pic/alu-v2_31.png')
 
         dag_id_depth = {}
 
@@ -60,6 +75,15 @@ for item in filename_list:
         groupQargs = {}
 
         dagList = []
+
+        one_gate_list = []
+
+        # dag_id to group index:
+        id_group_index_dict = {}
+
+        swap_gate_list = []
+
+        groupIndex_to_distIndex = {}
 
         inDegreeList = []
         l1 = []
@@ -99,17 +123,13 @@ for item in filename_list:
 
         print("oooooooooooooooooooooooooooooooooooooooooooooooooooooooooo")
         counter = 0
-        for nd in dagList:
-            print(str(counter) + " " + nd[0].name + " " + str(nd[1]) )
-            counter += 1
-        print("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
-
-        # to be deleted!
-        # counter = 0
-        # for nd in dag.topological_nodes():
-        #     nd.name = nd.name + ' ' + str(counter)
+        # for nd in dagList:
+        #     print(str(counter) + " " + nd[0].name + " " + str(nd[1]) )
         #     counter += 1
-        # dag_drawer(dag, scale=1.0, filename='ising.png')
+        # print("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
+
+        # node(new_node) that has 
+        # [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
         # rename nodes into rz, x, y, z, h, s, sdg, t, tdg
         name_dict = {}
         name_dict[0] = 'rz'
@@ -123,20 +143,18 @@ for item in filename_list:
         name_dict[8] = 'tdg'
         counter = 0
         for nd in dag.topological_nodes():
-            print(counter, end = ' ')
+            # print(counter, end = ' ')
             if nd.name == 'u1':
                 num = int(nd.op.params[0])
-                print(num)
+                # print(num)
                 # if (num <= 0):
                 #     new_name = 'rz'
                 # else:
                 new_name = name_dict[num]
                 nd.name = new_name
             counter += 1
-        
-        # dag_drawer(dag, scale=0.7, filename='3_17_13.png')
-        # node(new_node) that has 
-        # [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
+
+
         for nd in dagList:
             if nd[6] != 'op':
                 continue
@@ -151,9 +169,6 @@ for item in filename_list:
                 if dag_id_depth[pred_dag_id] > max_depth:
                     max_depth = dag_id_depth[pred_dag_id]              
             dag_id_depth[dag_id] = max_depth + 1
-
-        
-    
 
         # counter = 0
         # for nd in dag.topological_nodes():
@@ -200,74 +215,100 @@ for item in filename_list:
         # zeroList contains node(new_node) that has [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
         iterator = 0
         while iterator < len(dagList):
-            # print("zeroList's size is: ", end = " ")
-            # print(len(zeroList), end = " ")  
-
+            
             node = zeroList[iterator]
-            # print(str(iterator) + " " + str(node[2]), end = " ")
-            predNodeList = node[5]
-            indexList = []
-            # for each predecessor:
-            for predNode in predNodeList:
-                dagID = idDict[predNode._node_id]
-                index = 0
-                # based on dagID, iterate groupResult to find connected components
-                while index < len(groupResult):
-                    # if dagID belongs to a parent group
-                    if dagID in groupResult[index]:
-                        indexList.append(index)
-                        break
-                    index += 1
-            # print("correct until line 127", end = " ")
-            if len(indexList) == 0:
-                newList = []
-                newList.append(node[2])
-                groupResult.append(newList)
-                index = len(groupResult) - 1
+            # prejudge swap:
+            if node[0].name == 'swap':
+                temp_list = [node[2]]
+                groupResult.append(temp_list)
+                swap_gate_list.append(node[2])
+
+                index = len(groupResult) - 1  
                 # update groupQargs
                 bitSet = set()
                 for qarg in node[3]:
                     bitSet.add(qarg[1])
                 groupQargs[index] = bitSet
-            elif len(indexList) == 1:
-                index1 = indexList[0]
-                copyList = groupResult[index1]
-                copyList.append(node[2])
-                # update groupQargs
-                bitSet = set()
-                for qarg in node[3]:
-                    bitSet.add(qarg[1])
-                groupQargs[index1] = groupQargs[index1].union(bitSet)
-            else: # len(indexList) == 2
-                index1 = indexList[0]
-                index2 = indexList[1]
-                if (index1 == index2): # belong to the same group
-                    copyList = groupResult[index1]
-                    copyList.append(node[2])
-                else: # belong to different groups
-                    # check whether exceeds 2 bits
+            else:
+                # print(str(iterator) + " " + str(node[2]), end = " ")
+                predNodeList = node[5]
+                indexList = []
+                # for each predecessor:
+                for predNode in predNodeList:
+                    # if predNode.name == 'swap':
+                    #     continue
+                    dagID = idDict[predNode._node_id]
+                    index = 0
+                    # based on dagID, iterate groupResult to find connected components
+                    while index < len(groupResult):
+                        # if dagID belongs to a parent group
+                        if dagID in groupResult[index]:
+                            indexList.append(index)
+                            break
+                        index += 1
+                # print("correct until line 127", end = " ")
+                new_group = False
+                one_swap_parent = False
+                swap_parent = -1
+                if len(indexList) == 1:
+                    if groupResult[indexList[0]][0] in swap_gate_list:
+                        new_group = True
+                elif len(indexList) == 2:
+                    index1 = indexList[0]
+                    index2 = indexList[1]
+                    if groupResult[index1][0] in swap_gate_list and groupResult[index2][0] in swap_gate_list:
+                        new_group = True
+                    elif groupResult[index1][0] in swap_gate_list and groupResult[index2][0] not in swap_gate_list:
+                        one_swap_parent = True
+                        swap_parent = index2
+                    elif groupResult[index1][0] not in swap_gate_list and groupResult[index2][0] in swap_gate_list:
+                        one_swap_parent = True
+                        swap_parent = index1
+                # if node[2] == 7:
+                #     print(str(node[2]) + ' ' + str(one_swap_parent) )
+                #     print(indexList)
+                #     print(groupResult[indexList[0]])
+                #     print(groupResult[indexList[1]])
+                #     print(groupResult)
+                #     print(swap_gate_list)
+                if len(indexList) == 0 or new_group == True:
+                    # only if it is op!!!
+                    # if node[0].type == 'op':
+                    newList = []
+                    newList.append(node[2])
+                    groupResult.append(newList)
+                    index = len(groupResult) - 1  
+                    # update groupQargs
                     bitSet = set()
                     for qarg in node[3]:
                         bitSet.add(qarg[1])
-                    copyGroup1 = groupQargs[index1].copy()
-                    copyGroup2 = groupQargs[index2].copy()
-                    totalGroup = copyGroup1.union(copyGroup2)
-                    totalGroup = totalGroup.union(bitSet)
-                    # if not exceeds 2 bits
-                    if len(totalGroup) <= 2:
-                        # merge two group, discard index2   groupResult:[[dagid1, dagid2, dagid3.....],[],[]...] groupQargs:{{0, 1},{},{}...}
-                        newList = []
-                        newList.append(node[2])
-                        totalList = groupResult[index1] + groupResult[index2] + newList
-                        groupResult[index1] = totalList.copy()
-                        groupResult[index2].clear()
-                        groupQargs[index1] = totalGroup
-                        groupQargs[index2] = set()
-                    # if exceeds 2 bits
+                    groupQargs[index] = bitSet
+                elif len(indexList) == 1 or one_swap_parent == True:
+                    
+
+                    if len(indexList) == 1:
+                        index1 = indexList[0]
+                        # if one_swap_parent == True:
+                        #     index1 = swap_parent
+                        copyList = groupResult[index1]
+                        copyList.append(node[2])
+                        # update groupQargs
+                        bitSet = set()
+                        for qarg in node[3]:
+                            bitSet.add(qarg[1])
+                        groupQargs[index1] = groupQargs[index1].union(bitSet)
                     else:
-                        copyGroup1 = copyGroup1.union(bitSet)
-                        copyGroup2 = copyGroup2.union(bitSet)
-                        if len(copyGroup1) <= 2 and len(copyGroup2) > 2:
+                        index1 = indexList[0]
+                        index2 = indexList[1]
+                        bitSet = set()
+                        for qarg in node[3]:
+                            bitSet.add(qarg[1])
+                        copyGroup1 = groupQargs[index1].copy()
+                        copyGroup2 = groupQargs[index2].copy()
+                        totalGroup = copyGroup1.union(copyGroup2)
+                        totalGroup = totalGroup.union(bitSet)
+                        if len(totalGroup) < 2:
+                            index1 = swap_parent
                             copyList = groupResult[index1]
                             copyList.append(node[2])
                             # update groupQargs
@@ -275,25 +316,76 @@ for item in filename_list:
                             for qarg in node[3]:
                                 bitSet.add(qarg[1])
                             groupQargs[index1] = groupQargs[index1].union(bitSet)
-                        elif len(copyGroup2) <= 2 and len(copyGroup1) > 2:
-                            copyList = groupResult[index2]
-                            copyList.append(node[2])
-                            # update groupQargs
-                            bitSet = set()
-                            for qarg in node[3]:
-                                bitSet.add(qarg[1])
-                            groupQargs[index2] = groupQargs[index2].union(bitSet)
-                        else: # cannot be grouped into either parent parent, start a new group
+                        else:
                             newList = []
                             newList.append(node[2])
                             groupResult.append(newList)
-                            index = len(groupResult) - 1
+                            index = len(groupResult) - 1  
                             # update groupQargs
                             bitSet = set()
                             for qarg in node[3]:
                                 bitSet.add(qarg[1])
                             groupQargs[index] = bitSet
-            
+
+                else: # len(indexList) == 2
+                    index1 = indexList[0]
+                    index2 = indexList[1]
+                    if (index1 == index2): # belong to the same group
+                        copyList = groupResult[index1]
+                        copyList.append(node[2])
+                    else: # belong to different groups
+                        # check whether exceeds 2 bits
+                        bitSet = set()
+                        for qarg in node[3]:
+                            bitSet.add(qarg[1])
+                        # print(str(node[2]) + ' ' + str(one_swap_parent), end = ' ')
+                        # print(indexList, end = ' ')
+                        # print(len(groupResult))
+                        copyGroup1 = groupQargs[index1].copy()
+                        copyGroup2 = groupQargs[index2].copy()
+                        totalGroup = copyGroup1.union(copyGroup2)
+                        totalGroup = totalGroup.union(bitSet)
+                        # if not exceeds 2 bits
+                        if len(totalGroup) <= 2:
+                            # merge two group, discard index2   groupResult:[[dagid1, dagid2, dagid3.....],[],[]...] groupQargs:{{0, 1},{},{}...}
+                            newList = []
+                            newList.append(node[2])
+                            totalList = groupResult[index1] + groupResult[index2] + newList
+                            groupResult[index1] = totalList.copy()
+                            groupResult[index2].clear()
+                            groupQargs[index1] = totalGroup
+                            groupQargs[index2] = set()
+                        # if exceeds 2 bits
+                        else:
+                            copyGroup1 = copyGroup1.union(bitSet)
+                            copyGroup2 = copyGroup2.union(bitSet)
+                            if len(copyGroup1) <= 2 and len(copyGroup2) > 2:
+                                copyList = groupResult[index1]
+                                copyList.append(node[2])
+                                # update groupQargs
+                                bitSet = set()
+                                for qarg in node[3]:
+                                    bitSet.add(qarg[1])
+                                groupQargs[index1] = groupQargs[index1].union(bitSet)
+                            elif len(copyGroup2) <= 2 and len(copyGroup1) > 2:
+                                copyList = groupResult[index2]
+                                copyList.append(node[2])
+                                # update groupQargs
+                                bitSet = set()
+                                for qarg in node[3]:
+                                    bitSet.add(qarg[1])
+                                groupQargs[index2] = groupQargs[index2].union(bitSet)
+                            else: # cannot be grouped into either parent parent, start a new group
+                                newList = []
+                                newList.append(node[2])
+                                groupResult.append(newList)
+                                index = len(groupResult) - 1
+                                # update groupQargs
+                                bitSet = set()
+                                for qarg in node[3]:
+                                    bitSet.add(qarg[1])
+                                groupQargs[index] = bitSet
+            iterator += 1  
             # print("number of succNode: " + str(len(node[4])), end = " ")
             # now updating incoming degree of successors
             for succNode in node[4]:
@@ -325,8 +417,8 @@ for item in filename_list:
             # print("next: ", end = " ")
             # print(zeroList[0])
             # print()
-            iterator += 1  
-
+            
+        print(swap_gate_list)
         print(groupResult)
 
         # eliminate non-op gates
@@ -412,7 +504,7 @@ for item in filename_list:
                 sub_group = []
                 layer = 1
                 while 1 == 1:
-                    if layer > 2:
+                    if layer > 7:
                         break
                     if iter_depth > max_depth:
                         break
@@ -480,12 +572,15 @@ for item in filename_list:
         # node(new_node) that has 
         # [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
 
-
-
+        
+        group_index = -1
         # turn the group into networkx graph
         for group in finalGroupingResult:
+            group_index += 1
             if len(group) <= 1:
-                continue
+                if dagList[group[0]][0].name != 'swap':
+                    one_gate_list.append(group[0])
+                    continue
             # reassign qarg values
             qarg_dict = {}
             value_index = 1
@@ -501,8 +596,9 @@ for item in filename_list:
             G.clear()
             dumb_node = 'Z'
             qasm = ''
-            for dag_id in group:
-                if id_depth_dict[dag_id] % 2 == 1: # if on the first level
+            for dag_id in group: # # map each dag_id to group_index
+                
+                if id_depth_dict[dag_id] % 7 == 1: # if on the first level
                     node = dagList[dag_id]
                     name = node[0].name + '_' + str(dag_id)
                     gate_name = node[0].name # for qasm
@@ -566,6 +662,8 @@ for item in filename_list:
                 if nx.is_isomorphic(G, H, node_match=nm, edge_match=em):
                     dist_table_dict[index] = dist_table_dict[index] + 1
                     found = True
+                    # map group_index to dist_index
+                    groupIndex_to_distIndex[group_index] = index
                     break
                 index += 1
             if not found: # add a new structure
@@ -576,6 +674,9 @@ for item in filename_list:
                 dist_file_dict[pos] = parentPath
 
                 qasm_table.append(qasm)
+                # map group_index to dist_index
+                groupIndex_to_distIndex[group_index] = pos
+
 
 
 iterator = 0
@@ -598,69 +699,132 @@ print(dist_file_dict)
 
 
 i = 0
-output = open('qasm_2b2l.txt', 'w')
+output = open('qasm_2b7l.txt', 'w')
 for qasm in qasm_table:
     output.write(str(i) + ':\n')
     output.write(qasm)
     i += 1
 output.close()
 
-# # dag_id to group index:
-# id_group_index_dict = {}
-# group_index = 0
-# for group in finalGroupingResult:
-#     for dag_id in group:
-#         id_group_index_dict[dag_id] = group_index
-#     group_index += 1
-
-# print(id_group_index_dict)
 
 
-# # node(new_node) that has 
+#         group_index = 0
+#         for group in finalGroupingResult:
+#             for dag_id in group:
+#                 id_group_index_dict[dag_id] = group_index
+#             group_index += 1
+
+#         # print(id_group_index_dict)
+
+
+#         # node(new_node) that has 
 #         # [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
 
-# max_latency_table = [] # keep track of max_latency
-# i = 0
-# while i < 98:
-#     max_latency_table.append(0)
-#     i += 1
+#         max_latency_table = [] # keep track of max_latency
+#         i = 0
+#         while i < len(dagList):
+#             max_latency_table.append(0)
+#             i += 1
 
-# for nd in dagList:
-#     if nd[6] != 'op':
-#         continue
-#     dag_id = nd[2]
-#     group_index = id_group_index_dict[dag_id]
-#     group = finalGroupingResult[group_index]
-
-#     max_latency = 0
-#     pred_list = nd[5]
-
-#     invalid_predecessor = True
-#     within_group = True
-#     for pred in pred_list:
-#         to_continue1 = True
-#         to_continue2 = True
-#         pred_node_id = pred._node_id
-#         pred_dag_id = idDict[pred_node_id]
+#         for nd in dagList:
+#             if nd[6] != 'op':
+#                 continue
+#             dag_id = nd[2]
+#             group_index = id_group_index_dict[dag_id]
+#             group = finalGroupingResult[group_index]
         
-#         if pred_dag_id in group:
-#             to_continue1 = False
-#         else:
-#             within_group = False
-#         if pred.type != 'op':
-#             to_continue2 = False
-#         else:
-#             invalid_predecessor = False
-#         if to_continue1 == False or to_continue2 == False:
-#             continue        
-#         pred_group_index = id_group_index_dict[pred_dag_id]
-#         if max_latency_table[pred_group_index] > max_latency:
-#             max_latency = max_latency_table[pred_group_index]
-#     if within_group == False and invalid_predecessor == False:
-#         max_latency_table[group_index] = max_latency + latency_table[group_index]
-#     elif within_group == False and invalid_predecessor == True:
-#         max_latency_table[group_index] = latency_table[group_index]
-#     elif within_group == True:
-#         max_latency_table[group_index] = max_latency_table[group_index]
-    
-# print(max_latency_table)
+#             max_latency = 0
+#             pred_list = nd[5]
+
+#             invalid_predecessor = True
+#             within_group = True
+#             for pred in pred_list:
+#                 to_continue1 = True
+#                 to_continue2 = True
+#                 pred_node_id = pred._node_id
+#                 pred_dag_id = idDict[pred_node_id]
+                
+#                 if pred_dag_id in group:
+#                     to_continue1 = False
+#                 else:
+#                     within_group = False
+#                 if pred.type != 'op':
+#                     to_continue2 = False
+#                 else:
+#                     invalid_predecessor = False
+#                 if to_continue1 == False or to_continue2 == False:
+#                     continue        
+#                 pred_group_index = id_group_index_dict[pred_dag_id]
+#                 if max_latency_table[pred_group_index] > max_latency:
+#                     max_latency = max_latency_table[pred_group_index]
+#             current_latency = 0
+#             if dag_id not in one_gate_list:
+#                 dist_index = groupIndex_to_distIndex[group_index]
+#                 current_latency = latency_table[dist_index]
+#             else:
+#                 gate_name = dagList[dag_id][0].name
+#                 current_latency = one_gate_latency_dict[gate_name]
+
+#             if within_group == False and invalid_predecessor == False:
+#                 max_latency_table[group_index] = max_latency + current_latency 
+#             elif within_group == False and invalid_predecessor == True:
+#                 max_latency_table[group_index] = current_latency 
+#             elif within_group == True:
+#                 max_latency_table[group_index] = max_latency_table[group_index]
+
+#         print(max_latency_table)
+
+#         max_lat = 0
+#         for lat in max_latency_table:
+#             if lat > max_lat:
+#                 max_lat = lat
+
+#         # all_results.append(max_lat)
+
+#         # original latency
+#         original_latency_table = []
+#         i = 0
+#         while i < len(dagList):
+#             original_latency_table.append(0)
+#             i += 1
+
+#         for nd in dagList:
+#             if nd[6] != 'op':
+#                 continue
+#             dag_id = nd[2]
+#             gate_name = nd[0].name  
+
+#             max_latency = 0
+#             pred_list = nd[5]
+#             for pred in pred_list:
+#                 if pred.type != 'op':
+#                     continue
+#                 pred_node_id = pred._node_id
+#                 pred_dag_id = idDict[pred_node_id]
+#                 if original_latency_table[pred_dag_id] > max_latency:
+#                     max_latency = original_latency_table[pred_dag_id]              
+#             original_latency_table[dag_id] = max_latency + one_gate_latency_dict[gate_name]
+
+#         print(original_latency_table)
+
+#         org_lat = 0
+#         for lat in original_latency_table:
+#             if lat > org_lat:
+#                 org_lat = lat
+
+#         print(str(max_lat) + ' ' + str(org_lat))
+#         all_results.append(max_lat / org_lat)
+
+
+# print(all_results)
+
+# print(groupIndex_to_distIndex)
+
+# #one_gate_latency_list = ['cx', 't', 'tdg', 'x', 'rz', 'h']
+# one_gate_latency_dict = {}
+# one_gate_latency_dict['cx'] = 5.78125
+# one_gate_latency_dict['t'] = 4.21875
+# one_gate_latency_dict['h'] = 3.90625
+# one_gate_latency_dict['tdg'] = 3.90625
+# one_gate_latency_dict['x'] = 3.90625
+# one_gate_latency_dict['rz'] = 4.21875
