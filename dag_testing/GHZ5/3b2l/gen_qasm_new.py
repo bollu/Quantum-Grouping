@@ -28,6 +28,9 @@ while i < 800:
     latency_table.append(i)
     i += 1
 
+right_gates = 0
+test_gates = 0
+
 basedir = '/home/haoqindeng/Desktop/Quantum-Grouping/dag_testing/examples6'
 filename_list = os.listdir(basedir)
 for item in filename_list:
@@ -101,6 +104,8 @@ for item in filename_list:
         counter = 0
         for nd in dagList:
             print(str(counter) + " " + nd[0].name + " " + str(nd[1]) )
+            if (nd[0].type == 'op'):
+                right_gates += 1
             counter += 1
         print("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
 
@@ -362,7 +367,7 @@ for item in filename_list:
         finalGroupingResult = []
 
         # divide depth
-
+        bug_id = 0
         for group in newGroupResult:
             depth_id_dict = {}
             max_depth = 0
@@ -377,17 +382,26 @@ for item in filename_list:
                     new_list.append(dag_id)
                     depth_id_dict[depth] = new_list
             
-            first_dag_id = group[0]
-            first_depth = dag_id_depth[first_dag_id]
+            # if bug_id == len(newGroupResult) - 1:
+            #     print(depth_id_dict)
+
+            # first_dag_id = group[0]
+            # first_depth = dag_id_depth[first_dag_id]
+            shallowest_depth = 100000
+            for dag_id in group:
+                depth = dag_id_depth[dag_id]
+                if depth < shallowest_depth:
+                    shallowest_depth = depth    
+
             layer = 0
-            iter_depth = first_depth
+            iter_depth = shallowest_depth
             while iter_depth <= max_depth:
                 if iter_depth > max_depth:
                     break
                 sub_group = []
                 layer = 1
                 while 1 == 1:
-                    if layer > 2:
+                    if layer > 3:
                         break
                     if iter_depth > max_depth:
                         break
@@ -400,7 +414,7 @@ for item in filename_list:
                     iter_depth += 1
                 if len(sub_group) > 0:
                     finalGroupingResult.append(sub_group)
-            
+            bug_id += 1
             # iterator = 0
             # depth_id_dict = {}
             # for dag_id in group:
@@ -477,7 +491,7 @@ for item in filename_list:
             dumb_node = 'Z'
             qasm = ''
             for dag_id in group:
-                if id_depth_dict[dag_id] % 2 == 1: # if on the first level
+                if id_depth_dict[dag_id] % 3 == 1: # if on the first level
                     node = dagList[dag_id]
                     name = node[0].name + '_' + str(dag_id)
                     gate_name = node[0].name # for qasm
@@ -551,7 +565,9 @@ for item in filename_list:
                 dist_file_dict[pos] = parentPath
 
                 qasm_table.append(qasm)
-
+        for group in finalGroupingResult:
+            for dag_id in group:
+                test_gates += 1
 
 iterator = 0
 while iterator < len(dist_table):
@@ -573,12 +589,17 @@ print(dist_file_dict)
 
 
 i = 0
-output = open('qasm.txt', 'w')
+output = open('qasm_3b3l.txt', 'w')
 for qasm in qasm_table:
     output.write(str(i) + ':\n')
     output.write(qasm)
     i += 1
 output.close()
+
+
+
+print(right_gates)
+print(test_gates)
 
 # # dag_id to group index:
 # id_group_index_dict = {}
