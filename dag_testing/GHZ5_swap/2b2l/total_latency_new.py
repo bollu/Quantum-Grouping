@@ -13,17 +13,22 @@ from networkx.drawing.nx_pydot import write_dot
 import networkx.algorithms.isomorphism as iso
 import xlrd  #引入模块
 
+test_gate = 0
+right_gate = 0
+original_lat = []
+group_lat = []
+
 temp = []
 
 all_results = []
 
 latency_table = []
 
-# workbook=xlrd.open_workbook("../latency_list_mapped/qasm_list_24.csv.xlsx")  #文件路径
-# worksheet=workbook.sheet_by_index(0)
-# nrows=worksheet.nrows  #获取该表总行数
-# for i in range(nrows): #循环打印每一行
-#     latency_table.append(worksheet.row_values(i)[0])  #以列表形式读出，列表中的每一项是str类型
+workbook=xlrd.open_workbook("../swap_latency_list/qasm_list_24.xlsx")  #文件路径
+worksheet=workbook.sheet_by_index(0)
+nrows=worksheet.nrows  #获取该表总行数
+for i in range(nrows): #循环打印每一行
+    latency_table.append(worksheet.row_values(i)[0])  #以列表形式读出，列表中的每一项是str类型
 
 one_gate_latency_list = ['cx', 't', 'tdg', 'x', 'rz', 'h']
 one_gate_latency_dict = {}
@@ -33,6 +38,7 @@ one_gate_latency_dict['h'] = 3.90625
 one_gate_latency_dict['tdg'] = 3.90625
 one_gate_latency_dict['x'] = 3.90625
 one_gate_latency_dict['rz'] = 4.21875
+one_gate_latency_dict['swap'] = 2.8125
 
 # IBMQ.load_account()
 dist_table = []
@@ -120,6 +126,9 @@ for item in filename_list:
             idDict2[counter] = item
 
             counter += 1
+
+            if nd.type == 'op':
+                right_gate += 1
 
         print("oooooooooooooooooooooooooooooooooooooooooooooooooooooooooo")
         counter = 0
@@ -494,17 +503,21 @@ for item in filename_list:
                     new_list.append(dag_id)
                     depth_id_dict[depth] = new_list
             
-            first_dag_id = group[0]
-            first_depth = dag_id_depth[first_dag_id]
+            shallowest_depth = 100000
+            for dag_id in group:
+                depth = dag_id_depth[dag_id]
+                if depth < shallowest_depth:
+                    shallowest_depth = depth    
+
             layer = 0
-            iter_depth = first_depth
+            iter_depth = shallowest_depth
             while iter_depth <= max_depth:
                 if iter_depth > max_depth:
                     break
                 sub_group = []
                 layer = 1
                 while 1 == 1:
-                    if layer > 7:
+                    if layer > 4:
                         break
                     if iter_depth > max_depth:
                         break
@@ -598,7 +611,7 @@ for item in filename_list:
             qasm = ''
             for dag_id in group: # # map each dag_id to group_index
                 
-                if id_depth_dict[dag_id] % 7 == 1: # if on the first level
+                if id_depth_dict[dag_id] % 4 == 1: # if on the first level
                     node = dagList[dag_id]
                     name = node[0].name + '_' + str(dag_id)
                     gate_name = node[0].name # for qasm
@@ -652,6 +665,7 @@ for item in filename_list:
                         i += 1
             # compare with known structures in table_list
         
+
             em = iso.numerical_edge_match('weight', 1)
             nm = iso.categorical_node_match('fill', 'dumb')
             
@@ -679,152 +693,155 @@ for item in filename_list:
 
 
 
-iterator = 0
-while iterator < len(dist_table):
-    G = dist_table[iterator]
-    suffix = str(iterator)
-    file_name = 'structures_2b2l/structure_' + suffix
-    edge_labels=dict([((u,v,),d['weight'])
-                for u,v,d in G.edges(data=True)])
-    pos = nx.spring_layout(G)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
-    nx.draw_networkx(G, pos)
-    plt.savefig(file_name)
-    plt.clf()
-    iterator += 1
+# iterator = 0
+# while iterator < len(dist_table):
+#     G = dist_table[iterator]
+#     suffix = str(iterator)
+#     file_name = 'structures_2b2l/structure_' + suffix
+#     edge_labels=dict([((u,v,),d['weight'])
+#                 for u,v,d in G.edges(data=True)])
+#     pos = nx.spring_layout(G)
+#     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+#     nx.draw_networkx(G, pos)
+#     plt.savefig(file_name)
+#     plt.clf()
+#     iterator += 1
 
-print(dist_table_dict)
+# print(dist_table_dict)
 
-print(dist_file_dict)
-
-
-i = 0
-output = open('qasm_2b7l.txt', 'w')
-for qasm in qasm_table:
-    output.write(str(i) + ':\n')
-    output.write(qasm)
-    i += 1
-output.close()
+# print(dist_file_dict)
 
 
+# i = 0
+# output = open('qasm_2b7l.txt', 'w')
+# for qasm in qasm_table:
+#     output.write(str(i) + ':\n')
+#     output.write(qasm)
+#     i += 1
+# output.close()
 
-#         group_index = 0
-#         for group in finalGroupingResult:
-#             for dag_id in group:
-#                 id_group_index_dict[dag_id] = group_index
-#             group_index += 1
-
-#         # print(id_group_index_dict)
 
 
-#         # node(new_node) that has 
-#         # [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
+        group_index = 0
+        for group in finalGroupingResult:
+            for dag_id in group:
+                id_group_index_dict[dag_id] = group_index
+                test_gate += 1
+            group_index += 1
 
-#         max_latency_table = [] # keep track of max_latency
-#         i = 0
-#         while i < len(dagList):
-#             max_latency_table.append(0)
-#             i += 1
+        # print(id_group_index_dict)
 
-#         for nd in dagList:
-#             if nd[6] != 'op':
-#                 continue
-#             dag_id = nd[2]
-#             group_index = id_group_index_dict[dag_id]
-#             group = finalGroupingResult[group_index]
+
+        # node(new_node) that has 
+        # [0:nd, 1:inDegree, 2:counter(dagID), 3:qargs(list of qarg), 4:successorList(of DagNodes), 5:predecessorList(of DagNodes), 6:type]
+
+        max_latency_table = [] # keep track of max_latency
+        i = 0
+        while i < len(dagList):
+            max_latency_table.append(0)
+            i += 1
+
+        for nd in dagList:
+            if nd[6] != 'op':
+                continue
+            dag_id = nd[2]
+            group_index = id_group_index_dict[dag_id]
+            group = finalGroupingResult[group_index]
         
-#             max_latency = 0
-#             pred_list = nd[5]
+            max_latency = 0
+            pred_list = nd[5]
 
-#             invalid_predecessor = True
-#             within_group = True
-#             for pred in pred_list:
-#                 to_continue1 = True
-#                 to_continue2 = True
-#                 pred_node_id = pred._node_id
-#                 pred_dag_id = idDict[pred_node_id]
+            invalid_predecessor = True
+            within_group = True
+            for pred in pred_list:
+                to_continue1 = True
+                to_continue2 = True
+                pred_node_id = pred._node_id
+                pred_dag_id = idDict[pred_node_id]
                 
-#                 if pred_dag_id in group:
-#                     to_continue1 = False
-#                 else:
-#                     within_group = False
-#                 if pred.type != 'op':
-#                     to_continue2 = False
-#                 else:
-#                     invalid_predecessor = False
-#                 if to_continue1 == False or to_continue2 == False:
-#                     continue        
-#                 pred_group_index = id_group_index_dict[pred_dag_id]
-#                 if max_latency_table[pred_group_index] > max_latency:
-#                     max_latency = max_latency_table[pred_group_index]
-#             current_latency = 0
-#             if dag_id not in one_gate_list:
-#                 dist_index = groupIndex_to_distIndex[group_index]
-#                 current_latency = latency_table[dist_index]
-#             else:
-#                 gate_name = dagList[dag_id][0].name
-#                 current_latency = one_gate_latency_dict[gate_name]
+                if pred_dag_id in group:
+                    to_continue1 = False
+                else:
+                    within_group = False
+                if pred.type != 'op':
+                    to_continue2 = False
+                else:
+                    invalid_predecessor = False
+                if to_continue1 == False or to_continue2 == False:
+                    continue        
+                pred_group_index = id_group_index_dict[pred_dag_id]
+                if max_latency_table[pred_group_index] > max_latency:
+                    max_latency = max_latency_table[pred_group_index]
+            current_latency = 0
+            if dag_id not in one_gate_list:
+                dist_index = groupIndex_to_distIndex[group_index]
+                current_latency = latency_table[dist_index]
+            else:
+                gate_name = dagList[dag_id][0].name
+                current_latency = one_gate_latency_dict[gate_name]
 
-#             if within_group == False and invalid_predecessor == False:
-#                 max_latency_table[group_index] = max_latency + current_latency 
-#             elif within_group == False and invalid_predecessor == True:
-#                 max_latency_table[group_index] = current_latency 
-#             elif within_group == True:
-#                 max_latency_table[group_index] = max_latency_table[group_index]
+            if within_group == False and invalid_predecessor == False:
+                max_latency_table[group_index] = max_latency + current_latency 
+            elif within_group == False and invalid_predecessor == True:
+                max_latency_table[group_index] = current_latency 
+            elif within_group == True:
+                max_latency_table[group_index] = max_latency_table[group_index]
 
-#         print(max_latency_table)
+        print(max_latency_table)
 
-#         max_lat = 0
-#         for lat in max_latency_table:
-#             if lat > max_lat:
-#                 max_lat = lat
+        max_lat = 0
+        for lat in max_latency_table:
+            if lat > max_lat:
+                max_lat = lat
 
-#         # all_results.append(max_lat)
+        # all_results.append(max_lat)
 
-#         # original latency
-#         original_latency_table = []
-#         i = 0
-#         while i < len(dagList):
-#             original_latency_table.append(0)
-#             i += 1
+        # original latency
+        original_latency_table = []
+        i = 0
+        while i < len(dagList):
+            original_latency_table.append(0)
+            i += 1
 
-#         for nd in dagList:
-#             if nd[6] != 'op':
-#                 continue
-#             dag_id = nd[2]
-#             gate_name = nd[0].name  
+        for nd in dagList:
+            if nd[6] != 'op':
+                continue
+            dag_id = nd[2]
+            gate_name = nd[0].name  
 
-#             max_latency = 0
-#             pred_list = nd[5]
-#             for pred in pred_list:
-#                 if pred.type != 'op':
-#                     continue
-#                 pred_node_id = pred._node_id
-#                 pred_dag_id = idDict[pred_node_id]
-#                 if original_latency_table[pred_dag_id] > max_latency:
-#                     max_latency = original_latency_table[pred_dag_id]              
-#             original_latency_table[dag_id] = max_latency + one_gate_latency_dict[gate_name]
+            max_latency = 0
+            pred_list = nd[5]
+            for pred in pred_list:
+                if pred.type != 'op':
+                    continue
+                pred_node_id = pred._node_id
+                pred_dag_id = idDict[pred_node_id]
+                if original_latency_table[pred_dag_id] > max_latency:
+                    max_latency = original_latency_table[pred_dag_id]              
+            original_latency_table[dag_id] = max_latency + one_gate_latency_dict[gate_name]
 
-#         print(original_latency_table)
+        print(original_latency_table)
 
-#         org_lat = 0
-#         for lat in original_latency_table:
-#             if lat > org_lat:
-#                 org_lat = lat
+        org_lat = 0
+        for lat in original_latency_table:
+            if lat > org_lat:
+                org_lat = lat
 
-#         print(str(max_lat) + ' ' + str(org_lat))
-#         all_results.append(max_lat / org_lat)
-
-
-# print(all_results)
+        print(str(max_lat) + ' ' + str(org_lat))
+        all_results.append(max_lat / org_lat)
+        original_lat.append(org_lat)
+        group_lat.append(max_lat)
+print(all_results)
+print(original_lat)
+print(group_lat)
 
 # print(groupIndex_to_distIndex)
 
-# #one_gate_latency_list = ['cx', 't', 'tdg', 'x', 'rz', 'h']
-# one_gate_latency_dict = {}
-# one_gate_latency_dict['cx'] = 5.78125
-# one_gate_latency_dict['t'] = 4.21875
-# one_gate_latency_dict['h'] = 3.90625
-# one_gate_latency_dict['tdg'] = 3.90625
-# one_gate_latency_dict['x'] = 3.90625
-# one_gate_latency_dict['rz'] = 4.21875
+#one_gate_latency_list = ['cx', 't', 'tdg', 'x', 'rz', 'h']
+one_gate_latency_dict = {}
+one_gate_latency_dict['cx'] = 5.78125
+one_gate_latency_dict['t'] = 4.21875
+one_gate_latency_dict['h'] = 3.90625
+one_gate_latency_dict['tdg'] = 3.90625
+one_gate_latency_dict['x'] = 3.90625
+one_gate_latency_dict['rz'] = 4.21875

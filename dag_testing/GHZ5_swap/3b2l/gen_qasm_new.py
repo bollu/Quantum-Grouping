@@ -13,6 +13,9 @@ from networkx.drawing.nx_pydot import write_dot
 import networkx.algorithms.isomorphism as iso
 import xlrd  #引入模块
 
+right_gate = 0
+test_gate = 0
+
 temp = []
 
 all_results = []
@@ -123,6 +126,8 @@ for item in filename_list:
             idDict2[counter] = item
 
             counter += 1
+
+            right_gate += 1
 
         print("oooooooooooooooooooooooooooooooooooooooooooooooooooooooooo")
         counter = 0
@@ -557,6 +562,7 @@ for item in filename_list:
         # print(id_depth_dict)
         it = 0
         for group in finalGroupingResult:
+            test_gate += 1
             # print(it, end = ': ')
             first_dag_id = group[0]
             id_depth_dict[first_dag_id] = 1

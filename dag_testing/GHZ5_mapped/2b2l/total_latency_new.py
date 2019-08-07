@@ -13,13 +13,16 @@ from networkx.drawing.nx_pydot import write_dot
 import networkx.algorithms.isomorphism as iso
 import xlrd  #引入模块
 
+original_lat = []
+group_lat = []
+
 temp = []
 
 all_results = []
 
 latency_table = []
 
-workbook=xlrd.open_workbook("../latency_list_mapped/qasm_list_24.csv.xlsx")  #文件路径
+workbook=xlrd.open_workbook("../no_swap_latency_list/qasm_list_24.xlsx")  #文件路径
 worksheet=workbook.sheet_by_index(0)
 nrows=worksheet.nrows  #获取该表总行数
 for i in range(nrows): #循环打印每一行
@@ -734,11 +737,14 @@ for item in filename_list:
 
         print(str(max_lat) + ' ' + str(org_lat))
         all_results.append(max_lat / org_lat)
+        original_lat.append(org_lat)
+        group_lat.append(max_lat)
 
 
 print(all_results)
-
-print(groupIndex_to_distIndex)
+print(original_lat)
+print(group_lat)
+# print(groupIndex_to_distIndex)
 
 #one_gate_latency_list = ['cx', 't', 'tdg', 'x', 'rz', 'h']
 one_gate_latency_dict = {}
